@@ -64,10 +64,19 @@ class SolutionFromDict:
         self.sol = sol
         self.v = None
 
-        self.gain = next(item["X"] for item in self.sol["Vars"] if item["VarName"] == "gain[0]")
-        self.max_duration = next(item["X"] for item in self.sol["Vars"] if item["VarName"] == "max_duration[0]")
-        self.max_project_per_employee = next(item["X"] for item in self.sol["Vars"] if item["VarName"] == "max_project_per_employee[0]")
-
+        try:
+            self.gain = next(item["X"] for item in self.sol["Vars"] if item["VarName"] == "gain[0]")
+        except:
+            self.gain = 0
+        try:
+            self.max_duration = next(item["X"] for item in self.sol["Vars"] if item["VarName"] == "max_duration[0]")
+        except:
+            self.max_duration = 0
+        try:
+            self.max_project_per_employee = next(item["X"] for item in self.sol["Vars"] if item["VarName"] == "max_project_per_employee[0]")
+        except:
+            self.max_project_per_employee = 0
+            
         self.list_staff = [staff["name"] for staff in data["staff"]]
         self.list_job = [staff["name"] for staff in data["jobs"]]
         self.list_qual = self.data["qualifications"]

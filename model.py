@@ -9,9 +9,21 @@ from gurobipy import GRB, Model
 
 
 class GurobiModel:
-    def __init__(self, data, eps=10**(-3)):
-        self.data = data
+    """
+    Class that facilitate the creation of a gurobi model, you can use it to define constraints, 
+    find the nadir points and do a pre selection of potential non dominated points
 
+    Args:
+        data: dict containing the necessary information to instantiate the model
+        eps: float that we use to do strict inequalities. Default = 10**(-3)
+
+    Returns:
+        None
+    """
+    def __init__(self, data: dict, eps:float =10**(-3)):
+        self.data = data
+        
+        # usefull features from data
         self.n_staff = len(data["staff"])
         self.n_job = len(data["jobs"])
         self.n_days = data["horizon"]
@@ -19,21 +31,36 @@ class GurobiModel:
 
         self.eps = eps
 
+        # model initialization
         self.m = Model("Creation de planning")
 
-
+        # lists needed to save the models
         self.list_model =[]
         self.list_benef = []
         self.list_max_duration = []
         self.list_max_project_per_employee = []
         self.tuple_tested = []
 
+        # objectives variable of the model
         self.gain = None
         self.max_duration = None
         self.max_project_per_employee = None
 
+        # nadir points (selected after running self.find_nadir())
+        self.nadir_dur = None
+        self.nadir_proj = None
+
     def constraint_initialization(self):
-        # Création d'un vecteur de 3 variables continues
+        """
+        Define general constraints of self.model.
+
+        Args:
+            self
+
+        Returns:
+            None
+        """
+        # creation de la variable de decision moelisant le probleme
         v = self.m.addMVar(shape=(self.n_staff, self.n_job, self.n_days, self.n_qual), vtype=GRB.BINARY, name="v")
 
         # qualification personnnel
@@ -148,16 +175,25 @@ class GurobiModel:
     
 
     def find_all_sol(self):
+        """
+        Pre selection of all possible non dominated points.
+        You should run self.constraint_initialization() and self.find_nadir() before this function
+
+        Args:
+            self
+
+        Returns:
+            pd.DataFrame: A dataframe cointaining the values of objectives and each possible model
+        """
         for max_dur in tqdm(range(self.nadir_dur+1), desc="iterate throw days"):
             for n_proj in tqdm(range(self.nadir_proj+1), desc="iterate throw jobs"):
                 if not((max_dur, n_proj) in self.tuple_tested):
                     m_it = self.m.copy()
                     m_it.addConstr(self.max_duration == max_dur)
                     m_it.addConstr(self.max_project_per_employee == n_proj)
-                
+
                     # maj
                     m_it.update()
-                    # Affichage en mode texte du PL
                     m_it.optimize()
 
                     if m_it.SolCount >0 :
@@ -173,85 +209,54 @@ class GurobiModel:
         return df_solution
 
     def find_nadir(self):
-        m_nad_dur_ca = self.m.copy()
-        gain = m_nad_dur_ca.getVarByName("gain[0]")
-        max_duration = m_nad_dur_ca.getVarByName("max_duration[0]")
-        max_project_per_employee = m_nad_dur_ca.getVarByName("max_project_per_employee[0]")
-        m_nad_dur_ca.setObjectiveN(-gain, 0, priority=1)
-        m_nad_dur_ca.setObjectiveN(max_duration, 1, priority=2)
-        m_nad_dur_ca.setObjectiveN(max_project_per_employee, 2, priority=0)
-        m_nad_dur_ca.update()
-        m_nad_dur_ca.optimize()
-        m_nad_dur_ca.params.ObjNumber = 0
-        self.list_model.append(m_nad_dur_ca)
-        self.list_benef.append(m_nad_dur_ca.ObjVal)
-        self.list_max_duration.append(m_nad_dur_ca.getVarByName("max_duration[0]").X)
-        self.list_max_project_per_employee.append(m_nad_dur_ca.getVarByName("max_project_per_employee[0]").X)
-        self.tuple_tested.append((m_nad_dur_ca.getVarByName("max_duration[0]").X, 
-        m_nad_dur_ca.getVarByName("max_project_per_employee[0]").X))
-        m_nad_dur_ca.params.ObjNumber = 2
+        """
+        Find nadir points for max_duration and max_project_per_employee and print them and assign them to the object.
+        You should run self.constraint_initialization() before this function
 
-        m_nad_ca_dur = self.m.copy()
-        gain = m_nad_ca_dur.getVarByName("gain[0]")
-        max_duration = m_nad_ca_dur.getVarByName("max_duration[0]")
-        max_project_per_employee = m_nad_ca_dur.getVarByName("max_project_per_employee[0]")
-        m_nad_ca_dur.setObjectiveN(-gain, 0, priority=2)
-        m_nad_ca_dur.setObjectiveN(max_duration, 1, priority=1)
-        m_nad_ca_dur.setObjectiveN(max_project_per_employee, 2, priority=0)
-        m_nad_ca_dur.update()
-        m_nad_ca_dur.optimize()
-        m_nad_ca_dur.params.ObjNumber = 0
-        self.list_model.append(m_nad_ca_dur)
-        self.list_benef.append(m_nad_ca_dur.ObjVal)
-        self.list_max_duration.append(m_nad_ca_dur.getVarByName("max_duration[0]").X)
-        self.list_max_project_per_employee.append(m_nad_ca_dur.getVarByName("max_project_per_employee[0]").X)
-        self.tuple_tested.append((m_nad_ca_dur.getVarByName("max_duration[0]").X, 
-        m_nad_ca_dur.getVarByName("max_project_per_employee[0]").X))
-        m_nad_ca_dur.params.ObjNumber = 2
+        Args:
+            self
 
-        self.nadir_proj= int(max([m_nad_dur_ca.ObjNVal, m_nad_ca_dur.ObjNVal]))
-        print("nadir projet: ", self.nadir_proj)
-
-        m_nad_proj_ca = self.m.copy()
-        gain = m_nad_proj_ca.getVarByName("gain[0]")
-        max_duration = m_nad_proj_ca.getVarByName("max_duration[0]")
-        max_project_per_employee = m_nad_proj_ca.getVarByName("max_project_per_employee[0]")
-        m_nad_proj_ca.setObjectiveN(-gain, 0, priority=1)
-        m_nad_proj_ca.setObjectiveN(max_duration, 1, priority=0)
-        m_nad_proj_ca.setObjectiveN(max_project_per_employee, 2, priority=2)
-        m_nad_proj_ca.update()
-        m_nad_proj_ca.optimize()
-        m_nad_proj_ca.params.ObjNumber = 0
-        self.list_model.append(m_nad_proj_ca)
-        self.list_benef.append(m_nad_proj_ca.ObjVal)
-        self.list_max_duration.append(m_nad_proj_ca.getVarByName("max_duration[0]").X)
-        self.list_max_project_per_employee.append(m_nad_proj_ca.getVarByName("max_project_per_employee[0]").X)
-        self.tuple_tested.append((m_nad_proj_ca.getVarByName("max_duration[0]").X, 
-        m_nad_proj_ca.getVarByName("max_project_per_employee[0]").X))
-        m_nad_proj_ca.params.ObjNumber = 1
-
+        Returns:
+            None
+        """
         
 
-        m_nad_ca_proj = self.m.copy()
-        gain = m_nad_ca_proj.getVarByName("gain[0]")
-        max_duration = m_nad_ca_proj.getVarByName("max_duration[0]")
-        max_project_per_employee = m_nad_ca_proj.getVarByName("max_project_per_employee[0]")
-        m_nad_ca_proj.setObjectiveN(-gain, 0, priority=2)
-        m_nad_ca_proj.setObjectiveN(max_duration, 1, priority=0)
-        m_nad_ca_proj.setObjectiveN(max_project_per_employee, 2, priority=1)
-        m_nad_ca_proj.update()
-        m_nad_ca_proj.optimize()
-        m_nad_ca_proj.params.ObjNumber = 0
-        self.list_model.append(m_nad_ca_proj)
-        self.list_benef.append(m_nad_ca_proj.ObjVal)
-        self.list_max_duration.append(m_nad_ca_proj.getVarByName("max_duration[0]").X)
-        self.list_max_project_per_employee.append(m_nad_ca_proj.getVarByName("max_project_per_employee[0]").X)
-        self.tuple_tested.append((m_nad_ca_proj.getVarByName("max_duration[0]").X, 
-        m_nad_ca_proj.getVarByName("max_project_per_employee[0]").X))
-        m_nad_ca_proj.params.ObjNumber = 1
-
-
-        self.nadir_dur= int(max([m_nad_proj_ca.ObjNVal, m_nad_ca_proj.ObjNVal]))
+        # select nadir point for max_project_per_employee
+        self.nadir_proj= self.epsilone_constraint_2_obj("gain", "max_duration", "max_project_per_employee")
+        print("nadir projet: ", self.nadir_proj)
+        
+        # select nadir point for max_duration
+        self.nadir_dur = self.epsilone_constraint_2_obj( "gain", "max_project_per_employee", "max_duration")
         print("nadir duration: ", self.nadir_dur)
 
-        
+    def epsilone_constraint_2_obj(self, obj_1, obj_2, obj_3):
+        nadir = -1
+        m_epsilone = self.m.copy()
+        obj_1_var = m_epsilone.getVarByName(obj_1 + "[0]")
+        obj_2_var = m_epsilone.getVarByName(obj_2+ "[0]")
+        obj_3_var = m_epsilone.getVarByName(obj_3 + "[0]")
+        m_epsilone.setObjectiveN(-obj_1_var, 1, priority=2)
+        m_epsilone.setObjectiveN(obj_2_var, 2, priority=1)
+        m_epsilone.setObjectiveN(obj_3_var, 3, priority=0)
+        model_has_sol = True
+        m_epsilone.update()
+        m_epsilone.optimize()
+        while tqdm(model_has_sol, desc="finding nadir for " + obj_3):
+            m_epsilone_it = m_epsilone.copy()
+            m_epsilone_it.update()
+            m_epsilone_it.optimize()
+            if m_epsilone_it.SolCount >0:
+                self.list_model.append(m_epsilone_it)
+                self.list_benef.append(-m_epsilone_it.getVarByName("gain[0]").X)
+                self.list_max_duration.append(m_epsilone_it.getVarByName("max_duration[0]").X)
+                self.list_max_project_per_employee.append(m_epsilone_it.getVarByName("max_project_per_employee[0]").X)
+                self.tuple_tested.append((m_epsilone_it.getVarByName("max_duration[0]").X, 
+                m_epsilone_it.getVarByName("max_project_per_employee[0]").X))
+                nadir = max([nadir, m_epsilone_it.getVarByName(obj_3 + "[0]").X])
+                m_epsilone.addConstr(obj_2_var <= m_epsilone_it.getVarByName(obj_2 + "[0]").X - self.eps)
+                m_epsilone.update()
+            else: model_has_sol=False
+            
+
+        return int(nadir)
+

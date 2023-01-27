@@ -11,6 +11,7 @@ def is_dom(sol, solutions):
     return False
             
 def keep_non_dom_sol(solutions):
+    solutions[["benef","max_duration", "max_project_per_employee"]] = solutions[["benef","max_duration", "max_project_per_employee"]].astype(int)
     index_sol_non_dom = []
     for i in solutions.index:
         dominated = is_dom(solutions.loc[i], solutions)
