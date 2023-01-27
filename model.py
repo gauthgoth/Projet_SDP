@@ -162,7 +162,7 @@ class GurobiModel:
 
                     if m_it.SolCount >0 :
                         self.list_model.append(m_it)
-                        self.list_benef.append(m_it.ObjVal)
+                        self.list_benef.append(-m_it.ObjVal)
                         self.list_max_duration.append(m_it.getVarByName("max_duration[0]").X)
                         self.list_max_project_per_employee.append(m_it.getVarByName("max_project_per_employee[0]").X)
         df_solution = pd.DataFrame({"benef":self.list_benef,
@@ -184,7 +184,7 @@ class GurobiModel:
         m_nad_dur_ca.optimize()
         m_nad_dur_ca.params.ObjNumber = 0
         self.list_model.append(m_nad_dur_ca)
-        self.list_benef.append(m_nad_dur_ca.ObjVal)
+        self.list_benef.append(-m_nad_dur_ca.ObjVal)
         self.list_max_duration.append(m_nad_dur_ca.getVarByName("max_duration[0]").X)
         self.list_max_project_per_employee.append(m_nad_dur_ca.getVarByName("max_project_per_employee[0]").X)
         self.tuple_tested.append((m_nad_dur_ca.getVarByName("max_duration[0]").X, 
@@ -202,7 +202,7 @@ class GurobiModel:
         m_nad_ca_dur.optimize()
         m_nad_ca_dur.params.ObjNumber = 0
         self.list_model.append(m_nad_ca_dur)
-        self.list_benef.append(m_nad_ca_dur.ObjVal)
+        self.list_benef.append(-m_nad_ca_dur.ObjVal)
         self.list_max_duration.append(m_nad_ca_dur.getVarByName("max_duration[0]").X)
         self.list_max_project_per_employee.append(m_nad_ca_dur.getVarByName("max_project_per_employee[0]").X)
         self.tuple_tested.append((m_nad_ca_dur.getVarByName("max_duration[0]").X, 
@@ -223,7 +223,7 @@ class GurobiModel:
         m_nad_proj_ca.optimize()
         m_nad_proj_ca.params.ObjNumber = 0
         self.list_model.append(m_nad_proj_ca)
-        self.list_benef.append(m_nad_proj_ca.ObjVal)
+        self.list_benef.append(-m_nad_proj_ca.ObjVal)
         self.list_max_duration.append(m_nad_proj_ca.getVarByName("max_duration[0]").X)
         self.list_max_project_per_employee.append(m_nad_proj_ca.getVarByName("max_project_per_employee[0]").X)
         self.tuple_tested.append((m_nad_proj_ca.getVarByName("max_duration[0]").X, 
@@ -243,7 +243,7 @@ class GurobiModel:
         m_nad_ca_proj.optimize()
         m_nad_ca_proj.params.ObjNumber = 0
         self.list_model.append(m_nad_ca_proj)
-        self.list_benef.append(m_nad_ca_proj.ObjVal)
+        self.list_benef.append(-m_nad_ca_proj.ObjVal)
         self.list_max_duration.append(m_nad_ca_proj.getVarByName("max_duration[0]").X)
         self.list_max_project_per_employee.append(m_nad_ca_proj.getVarByName("max_project_per_employee[0]").X)
         self.tuple_tested.append((m_nad_ca_proj.getVarByName("max_duration[0]").X, 
