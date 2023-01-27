@@ -256,7 +256,5 @@ class GurobiModel:
                 m_epsilone.addConstr(obj_2_var <= m_epsilone_it.getVarByName(obj_2 + "[0]").X - self.eps)
                 m_epsilone.update()
             else: model_has_sol=False
-            
-
         return int(nadir)
 
