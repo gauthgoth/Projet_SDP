@@ -1,20 +1,19 @@
 import numpy as np
 from gurobipy import *
-from gurobipy import Model
+from gurobipy import Model, GRB
 import pandas as pd
 import os
 
 data_name = "toy_instance"
 df = pd.read_csv(os.path.join("solution", data_name, "df_solution_json.csv"), index_col="index")
 
-reference_decideur=np.array([ [-65, 1, 3, 3],
-                                [-65, 2, 2, 3],
+reference_decideur=-np.array([ [-65, 1, 3, 1],
+                                [-65, 2, 2, 1],
                                 [-55, 1, 2, 2],
-                                [0, 0, 0, 1],
-                                [0, 0, 0, 1]])
-new_planning=np.array(df.iloc[:, : 3])
-print(reference_decideur.shape)
-print(new_planning.shape)
+                                [0, 0, 0, 3],
+                                [0, 0, 0, 3]])
+new_planning=-np.array(df.iloc[:, : 3])
+
 
 ####### Param du probleme
 Li=3
@@ -81,12 +80,20 @@ for j in range(len(reference_decideur)-1):
     else:
         m.addConstr(score(j)-score(j+1)+sig[j]["sous"]-sig[j+1]["sous"]+sig[j+1]["sur"]-sig[j]["sur"] == 0)
 
+obj = 0
+for j in range(len(reference_decideur)):
+    obj+=sig[j]["sur"] + sig[j]["sous"]
 # Parametrage (mode mute)
 m.params.outputflag = 0
+
+m.setObjective(obj, GRB.MINIMIZE)
+
+m.update()
 
 # Resolution du PL
 m.optimize()
 
+print(m.ObjVal)
 
 def k_x_eval(i,j, list_alternatives):
     k = 0
@@ -123,3 +130,5 @@ print(rank_ref(reference_decideur))
 print(rank_new(reference_decideur))
 
 print(rank_new(new_planning))
+
+print(v.X)
