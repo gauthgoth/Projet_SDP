@@ -1,9 +1,20 @@
 import os
 from tqdm import tqdm
 import numpy as np
+import pandas as pd
 from gurobipy import read
 
-def save_models_mps_sol(df, data_name):
+def save_models_mps_sol(df:pd.DataFrame, data_name: str):
+    """
+    Save model stored in column model in .mps and .store format. Add the columns of the path in df
+
+    Args:
+        df: pd.DataFrame output of keep_non_dom_sol
+        data_name: string name of the data that we used to create the df
+
+    Returns:
+        df: pd.DataFrame A dataframe with the columns model_path added
+    """
     path = os.path.join("solution", data_name, 'model')
     os.makedirs(path, exist_ok=True)
     model_path_mps = []
@@ -23,7 +34,16 @@ def save_models_mps_sol(df, data_name):
 
     return df
 
-def load_models_mps_sol(df):
+def load_models_mps_sol(df:pd.DataFrame):
+    """
+    Read the save models ond optimize them
+
+    Args:
+        df: pd.DataFrame output of save_models_mps_sol
+
+    Returns:
+        df: pd.DataFrame A dataframe with the optimized model in column path
+    """
     list_model = []
     for index in tqdm(df.index, desc = "iterating throw indexes"):
         model = read(df.loc[index, "model_path_mps"])
@@ -37,7 +57,17 @@ def load_models_mps_sol(df):
 
     return df
 
-def save_models_json(df, data_name):
+def save_models_json(df:pd.DataFrame, data_name:str):
+    """
+    Save model stored in column model in .json format. Add the columns of the path in df
+
+    Args:
+        df: pd.DataFrame output of keep_non_dom_sol
+        data_name: string name of the data that we used to create the df
+
+    Returns:
+        df: pd.DataFrame A dataframe with the columns model_path added
+    """
     path = os.path.join("solution", data_name, 'model')
     os.makedirs(path, exist_ok=True)
     model_path_json = []
@@ -53,17 +83,31 @@ def save_models_json(df, data_name):
     return df
 
 class SolutionFromDict:
-    def __init__(self, data, sol):
+    """
+    Class that permits to vizualize planning from given dictionnaries
+
+    Args:
+        data: dict that gives general information of the instance
+        sol: dict output of the write with a .json from a gurobi model
+    """
+    def __init__(self, data:dict, sol:dict):
         self.data = data
 
+        # general info used in the viz
         self.n_staff = len(data["staff"])
         self.n_job = len(data["jobs"])
         self.n_days = data["horizon"]
         self.n_qual = len(data["qualifications"])
+        self.list_staff = [staff["name"] for staff in data["staff"]]
+        self.list_job = [staff["name"] for staff in data["jobs"]]
+        self.list_qual = self.data["qualifications"]
 
         self.sol = sol
+
+        # main decision variable
         self.v = None
 
+        # info on objectives
         try:
             self.gain = next(item["X"] for item in self.sol["Vars"] if item["VarName"] == "gain[0]")
         except:
@@ -77,12 +121,16 @@ class SolutionFromDict:
         except:
             self.max_project_per_employee = 0
             
-        self.list_staff = [staff["name"] for staff in data["staff"]]
-        self.list_job = [staff["name"] for staff in data["jobs"]]
-        self.list_qual = self.data["qualifications"]
+        
 
 
     def get_v(self):
+        """
+        Retrieve all v values and store them in self.v
+
+        Args:
+            self
+        """
         self.v = np.zeros((self.n_staff, self.n_job, self.n_days, self.n_qual))
         for i in range(self.n_staff):
             for p in range(self.n_job):
@@ -95,6 +143,15 @@ class SolutionFromDict:
         return self.v
     
     def get_CA_per_project(self):
+        """
+        Retrieve all values of CA;project and store them in self.CA_per_project
+        
+        Args:
+            self
+
+        Returns:
+            self.CA_per_project: np.array containing the CA of each project
+        """
         self.CA_per_project = np.zeros(self.n_job)
         for p in range(self.n_job):
             try :
@@ -103,7 +160,17 @@ class SolutionFromDict:
                 pass
         return self.CA_per_project
     
-    def get_planning_employee(self,employee):
+    def get_planning_employee(self, employee:str):
+        """
+        select an employee and give his planning with the jobs where he works and qualification needed
+        
+        Args:
+            self
+            employee: str employee name
+
+        Returns:
+            planning: list. Planning of the employee per day (1 list element is a day)
+        """
         i = self.list_staff.index(employee)
         planning = []
         for t in range(self.n_days):
@@ -119,7 +186,17 @@ class SolutionFromDict:
         
 
 
-    def get_planning_project(self,project):
+    def get_planning_project(self, project:str):
+        """
+        select a project and give the timetable of a job with the employees sent and their qualifcations apllied
+        
+        Args:
+            self
+            project: str project name
+
+        Returns:
+            planning: list. Planning of the project per day (1 list element is a day)
+        """
         p = self.list_job.index(project)
         planning = []
         for t in range(self.n_days):

@@ -8,25 +8,31 @@ import os
 
 data_name = "toy_instance"
 
-# Opening JSON file
+# Open the json
 with open(data_name + '.json') as json_file:
     data = json.load(json_file)
 
+# initiate the model with the given data
 model = GurobiModel(data)
 
+# initialize constraint and zero flag the model
 model.constraint_initialization()
 model.m.params.outputflag = 0
 model.m.update()
 
+# find nadir points for max_duration and max_project_per_employee
 model.find_nadir()
 
-
+# set the gain as objective
 model.m.setObjective(-model.gain, GRB.MINIMIZE)
 model.m.update()
 
+# find all solutions within nadir space
 df_solution = model.find_all_sol()
 
-indexes, df = keep_non_dom_sol(df_solution)
+# keep only dominated 
+df = keep_non_dom_sol(df_solution)
 
+# save the model
 #save_models_mps_sol(df, data_name)
 save_models_json(df,data_name)

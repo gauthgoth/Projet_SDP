@@ -163,7 +163,7 @@ class GurobiModel:
         for p in range(self.n_job):
             gain[p] = self.data["jobs"][p]["gain"]
 
-        # CA_per_project
+        # def CA_per_project
         CA_per_project = self.m.addMVar(shape=(self.n_job), vtype=GRB.INTEGER, name="CA_per_project")
         self.m.addConstr(CA_per_project == job_real * (gain - penality))
 
@@ -185,9 +185,13 @@ class GurobiModel:
         Returns:
             pd.DataFrame: A dataframe cointaining the values of objectives and each possible model
         """
+        # iterate over all possible value in nadir set
         for max_dur in tqdm(range(self.nadir_dur+1), desc="iterate throw days"):
             for n_proj in tqdm(range(self.nadir_proj+1), desc="iterate throw jobs"):
+                
+                # Check if the tuple of constraint has already been optimized
                 if not((max_dur, n_proj) in self.tuple_tested):
+                    # copy model and set constraints
                     m_it = self.m.copy()
                     m_it.addConstr(self.max_duration == max_dur)
                     m_it.addConstr(self.max_project_per_employee == n_proj)
@@ -195,12 +199,15 @@ class GurobiModel:
                     # maj
                     m_it.update()
                     m_it.optimize()
-
+                    
+                    # if solution exists, store it in a list
                     if m_it.SolCount >0 :
                         self.list_model.append(m_it)
                         self.list_benef.append(m_it.ObjVal)
                         self.list_max_duration.append(m_it.getVarByName("max_duration[0]").X)
                         self.list_max_project_per_employee.append(m_it.getVarByName("max_project_per_employee[0]").X)
+        
+        # create dataframe with solutions and model and drop duplicates
         df_solution = pd.DataFrame({"benef":self.list_benef,
                                 "max_duration": self.list_max_duration,
                                 "max_project_per_employee":self.list_max_project_per_employee,
@@ -229,32 +236,59 @@ class GurobiModel:
         self.nadir_dur = self.epsilone_constraint_2_obj( "gain", "max_project_per_employee", "max_duration")
         print("nadir duration: ", self.nadir_dur)
 
-    def epsilone_constraint_2_obj(self, obj_1, obj_2, obj_3):
+    def epsilone_constraint_2_obj(self, obj_1:str, obj_2:str, obj_3:str):
+        """
+        Run epsilone constraints in order to find nadir point of obj_3
+
+        Args:
+            self
+            obj_1: string initial objective of epsilone constraint, it should be "gain"
+            obj_2: string second objective of epsilone constraint
+            obj_3: string objective that we want to find the nadir 
+
+        Returns:
+            nadir: int containing the nadir point of obj 3
+        """
+        # initialize nadir to min points -1
         nadir = -1
+
+        # create a copy of the model
         m_epsilone = self.m.copy()
+
+        # retrieve the objectives as variables
         obj_1_var = m_epsilone.getVarByName(obj_1 + "[0]")
         obj_2_var = m_epsilone.getVarByName(obj_2+ "[0]")
         obj_3_var = m_epsilone.getVarByName(obj_3 + "[0]")
+
+        # set the objectives with the right priorities (we change the size for gain)
         m_epsilone.setObjectiveN(-obj_1_var, 1, priority=2)
         m_epsilone.setObjectiveN(obj_2_var, 2, priority=1)
         m_epsilone.setObjectiveN(obj_3_var, 3, priority=0)
         model_has_sol = True
         m_epsilone.update()
-        m_epsilone.optimize()
+        
+        # epsilone constraint for obj1 and obj_2
         while tqdm(model_has_sol, desc="finding nadir for " + obj_3):
             m_epsilone_it = m_epsilone.copy()
             m_epsilone_it.update()
             m_epsilone_it.optimize()
+            
+            # check if solution exists
             if m_epsilone_it.SolCount >0:
+                # store solution in a list
                 self.list_model.append(m_epsilone_it)
                 self.list_benef.append(-m_epsilone_it.getVarByName("gain[0]").X)
                 self.list_max_duration.append(m_epsilone_it.getVarByName("max_duration[0]").X)
                 self.list_max_project_per_employee.append(m_epsilone_it.getVarByName("max_project_per_employee[0]").X)
                 self.tuple_tested.append((m_epsilone_it.getVarByName("max_duration[0]").X, 
                 m_epsilone_it.getVarByName("max_project_per_employee[0]").X))
+
+                # select the max value of obj_3 as nadir throw the loops
                 nadir = max([nadir, m_epsilone_it.getVarByName(obj_3 + "[0]").X])
+
+                # set the epsilone constraint
                 m_epsilone.addConstr(obj_2_var <= m_epsilone_it.getVarByName(obj_2 + "[0]").X - self.eps)
                 m_epsilone.update()
-            else: model_has_sol=False
+            else: model_has_sol=False # if no solution, stop the loop
         return int(nadir)
 
