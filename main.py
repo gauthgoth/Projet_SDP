@@ -17,6 +17,7 @@ model = GurobiModel(data)
 
 # initialize constraint and zero flag the model
 model.constraint_initialization()
+model.m.setParam('MIPGap', 0.01)
 model.m.params.outputflag = 0
 model.m.update()
 
