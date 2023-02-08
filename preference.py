@@ -4,7 +4,7 @@ from gurobipy import Model, GRB
 import pandas as pd
 import os
 
-data_name = "toy_instance"
+data_name = "medium_instance"
 df = pd.read_csv(os.path.join("solution", data_name, "df_solution_json.csv"), index_col="index")
 
 # preference du decideur (doit regrouper les classes entres elles )
@@ -16,10 +16,11 @@ if data_name == "toy_instance":
                                     [0, 0, 0, 3],
                                     [0, 0, 0, 3]])
 elif data_name == "medium_instance":
-    reference_decideur=-np.array([[]
-                                    ])
+    reference_decideur = -np.array([[-413, 7, 6, 1],
+                                    [-130, 5, 1, 2],
+                                    [0, 0, 0, 3],])
 else:
-    reference_decideur=-np.array([[]
+    reference_decideur = -np.array([[]
                                     ])
 new_planning = -np.array(df.iloc[:, : 3])
 
