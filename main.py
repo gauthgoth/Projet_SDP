@@ -6,7 +6,7 @@ from gurobipy import GRB
 import json
 import os
 
-data_name = "toy_instance"
+data_name = "medium_instance"
 
 # Open the json
 with open(data_name + '.json') as json_file:
