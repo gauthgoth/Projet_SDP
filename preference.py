@@ -3,6 +3,7 @@ from gurobipy import *
 from gurobipy import Model, GRB
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
 
 data_name = "medium_instance"
 df = pd.read_csv(os.path.join("solution", data_name, "df_solution_json.csv"), index_col="index")
@@ -16,8 +17,12 @@ if data_name == "toy_instance":
                                     [0, 0, 0, 3],
                                     [0, 0, 0, 3]])
 elif data_name == "medium_instance":
-    reference_decideur = -np.array([[-413, 7, 6, 1],
-                                    [-130, 5, 1, 2],
+    reference_decideur = -np.array([[-400, 5, 5, 1],
+                                    [-403, 4, 6, 1],
+                                    [-413, 7, 6, 2],
+                                    [-374, 3, 6, 2],
+                                    [-30, 1, 1, 3],
+                                    [-130, 5, 1, 3],
                                     [0, 0, 0, 3],])
 else:
     reference_decideur = -np.array([[]
@@ -129,3 +134,16 @@ print(rank_ref(reference_decideur, with_error=False))
 
 print(rank_ref(new_planning, with_error=False))
 
+x_ = np.zeros(len(v.X))
+i=0
+for k in range(len(x_)):
+    x_[k] = x(i, k)
+fig,ax = plt.subplots()
+ax.plot(x_,v.X[:,i])
+ax.set_title('Fonction UTA pour le gain')
+ax.set_ylabel('Fonction UTA')
+ax.set_xlabel('Gain')
+
+#display plot
+plt.savefig("UTA gain")
+plt.show()
