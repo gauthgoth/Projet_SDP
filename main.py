@@ -6,7 +6,7 @@ from gurobipy import GRB
 import json
 import os
 
-data_name = "medium_instance"
+data_name = "toy_instance"
 
 # Open the json
 with open(data_name + '.json') as json_file:
@@ -17,7 +17,8 @@ model = GurobiModel(data)
 
 # initialize constraint and zero flag the model
 model.constraint_initialization()
-model.m.setParam('MIPGap', 0.01)
+#model.m.setParam('MIPGap', 0.01)
+model.m.setParam('TimeLimit', 3*60)
 model.m.params.outputflag = 0
 model.m.update()
 
@@ -37,3 +38,4 @@ df = keep_non_dom_sol(df_solution)
 # save the model
 #save_models_mps_sol(df, data_name)
 save_models_json(df,data_name)
+print(model.mip_max)

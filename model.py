@@ -50,6 +50,9 @@ class GurobiModel:
         self.nadir_dur = None
         self.nadir_proj = None
 
+        # MIP Gap
+        self.mip_max = -100
+
     def constraint_initialization(self):
         """
         Define general constraints of self.model.
@@ -206,6 +209,8 @@ class GurobiModel:
                         self.list_benef.append(m_it.ObjVal)
                         self.list_max_duration.append(m_it.getVarByName("max_duration[0]").X)
                         self.list_max_project_per_employee.append(m_it.getVarByName("max_project_per_employee[0]").X)
+                        if m_it.isMIP==1:
+                            self.mip_max = max(self.mip_max, m_it.MIPGap)
         
         # create dataframe with solutions and model and drop duplicates
         df_solution = pd.DataFrame({"benef":self.list_benef,
